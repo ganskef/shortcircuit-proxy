@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ganskef/shortcircuit-proxy.png?branch=master)](https://travis-ci.org/ganskef/shortcircuit-proxy)
+
 # Short Circuit Proxy
 A proxy library using the [Netty 5 API](http://netty.io/4.1/xref/). 
 
