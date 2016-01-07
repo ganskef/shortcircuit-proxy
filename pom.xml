@@ -19,12 +19,6 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>io.netty</groupId>
@@ -36,6 +30,15 @@
             <artifactId>netty-handler</artifactId>
             <version>${netty.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Introduced by de.ganskef.test.Server -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-example</artifactId>
@@ -56,6 +59,14 @@
                 </exclusion>
                 </exclusions>
             -->
+        </dependency>
+
+        <!-- Introduced by de.ganskef.test.Client -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.1</version>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>
