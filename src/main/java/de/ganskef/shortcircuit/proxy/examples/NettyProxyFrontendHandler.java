@@ -12,8 +12,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.handler.codec.http.HttpUtil;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.codec.http.LastHttpContent;
 
 import java.net.SocketAddress;
 
@@ -39,7 +38,10 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
             System.err.println(request.uri());
 
             SocketAddress address = HttpRequestUtil.getInetSocketAddress(request);
-            if (outboundChannel == null && address != null) {
+            if (address == null) {
+                System.err.println("Address not resolved, terminate " + msg);
+                closeOnFlush(ctx.channel());
+            } else if (outboundChannel == null) {
                 final Channel inboundChannel = ctx.channel();
                 // Start the connection attempt.
                 Bootstrap b = new Bootstrap();
@@ -73,15 +75,14 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
                         }
                     }
                 });
-            } else if (outboundChannel == null) {
-                closeOnFlush(ctx.channel());
             } else if (outboundChannel.isActive()) {
                 writeAndFlush(ctx, msg);
-            } else {
-                System.err.println("Expected request, but  " + msg);
             }
+        } else if (msg instanceof LastHttpContent) {
+            // Success, terminator received
+        } else {
+            System.err.println("Expected request, but read " + msg);
         }
-
     }
 
     private void writeAndFlush(final ChannelHandlerContext ctx, final Object msg) {
