@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  */
 public final class ProxyUtils {
 
-    private static final Pattern URI_PATTERN = Pattern.compile("(?:https?://([^:]+))?(?::(\\d+))?(/.*)",
+    private static final Pattern URI_PATTERN = Pattern.compile("(?:https?://([^:/]+))?(?::(\\d+))?(/.*)",
             Pattern.CASE_INSENSITIVE);
 
     // private static Pattern HTTP_PREFIX = Pattern.compile("^https?://.*",

@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 public final class HttpRequestUtil {
 
-    private static final Pattern URI_PATTERN = Pattern.compile("(?:http://([^:]+)(?::(\\d+))?/.*|([^:]+):(\\d+))",
+    private static final Pattern URI_PATTERN = Pattern.compile("(?:http://([^:/]+)(?::(\\d+))?/.*|([^:]+):(\\d+))",
             Pattern.CASE_INSENSITIVE);
 
     private HttpRequestUtil() {

@@ -26,6 +26,14 @@ public class HttpRequestUtilTest {
     }
 
     @Test
+    public void testHttpMoreSlashes() {
+        HttpRequest request = createRequest("http://localhost/dir/");
+        InetSocketAddress address = HttpRequestUtil.getInetSocketAddress(request);
+        assertEquals("localhost", address.getHostName());
+        assertEquals(80, address.getPort());
+    }
+
+    @Test
     public void testHttpWithPort() {
         HttpRequest request = createRequest("http://localhost:8080/");
         InetSocketAddress address = HttpRequestUtil.getInetSocketAddress(request);

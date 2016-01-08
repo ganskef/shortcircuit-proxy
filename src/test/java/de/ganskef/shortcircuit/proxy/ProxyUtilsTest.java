@@ -47,4 +47,10 @@ public class ProxyUtilsTest {
         assertEquals("/LICENSE.txt", actual);
     }
 
+    @Test
+    public void testHttpMoreSlashes() {
+        String actual = ProxyUtils.stripHost("http://localhost/dir/");
+        assertEquals("/dir/", actual);
+    }
+
 }
