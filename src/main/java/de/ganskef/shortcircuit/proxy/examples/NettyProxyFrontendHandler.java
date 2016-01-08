@@ -13,6 +13,8 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 
 import java.net.SocketAddress;
 
@@ -35,8 +37,9 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         System.out.println(ctx.channel() + " channelRead");
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
-            System.err.println(request.uri());
+            System.out.println(request.uri());
             SocketAddress address = HttpRequestUtil.getInetSocketAddress(request);
+            System.out.println(address);
             if (address == null) {
                 System.err.println("Address not resolved, terminate " + msg);
                 closeOnFlush(ctx.channel());
