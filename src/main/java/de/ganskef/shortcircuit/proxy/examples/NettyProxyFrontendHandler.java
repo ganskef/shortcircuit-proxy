@@ -48,6 +48,10 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         } else if (msg instanceof LastHttpContent) {
             // Success, terminator received
         } else {
+            // To get an URI to establish a connection to the upstream server
+            // it's *necessary* to add a HttpRequestDecoder in the frontend
+            // initializer. Doing so here's HttpRequest and LastHttpContent
+            // expected only.
             System.err.println("Expected request, but read " + msg);
         }
     }
