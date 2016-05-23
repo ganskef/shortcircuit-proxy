@@ -4,7 +4,7 @@ import de.ganskef.shortcircuit.proxy.ProxyUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.example.http.file.HttpStaticFileServerInitializer;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 
 public class Server {
@@ -30,7 +30,8 @@ public class Server {
         ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup);
         b.channel(NioServerSocketChannel.class);
-        b.childHandler(new HttpStaticFileServerInitializer(sslCtx));
+        b.handler(new LoggingHandler(getClass()));
+        b.childHandler(new ServerInitializer(sslCtx));
         b.bind(getPort()).sync();
         return this;
     }

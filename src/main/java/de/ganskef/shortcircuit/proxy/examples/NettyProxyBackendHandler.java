@@ -6,7 +6,12 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
-public class NettyProxyBackendHandler  extends ChannelInboundHandlerAdapter {
+/**
+ * A HTTP proxy handler for the backend server derived from <a href=
+ * "http://netty.io/5.0/xref/io/netty/example/proxy/HexDumpProxyBackendHandler.html"
+ * >io.netty.example.proxy.HexDumpProxyBackendHandler</a>.
+ */
+public class NettyProxyBackendHandler extends ChannelInboundHandlerAdapter {
 
     private final Channel inboundChannel;
 
@@ -40,7 +45,7 @@ public class NettyProxyBackendHandler  extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        cause.printStackTrace();
         NettyProxyFrontendHandler.closeOnFlush(ctx.channel());
     }
+
 }

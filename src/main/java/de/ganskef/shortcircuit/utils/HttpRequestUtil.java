@@ -1,10 +1,10 @@
 package de.ganskef.shortcircuit.utils;
 
-import io.netty.handler.codec.http.HttpRequest;
-
 import java.net.InetSocketAddress;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import io.netty.handler.codec.http.HttpRequest;
 
 public final class HttpRequestUtil {
 

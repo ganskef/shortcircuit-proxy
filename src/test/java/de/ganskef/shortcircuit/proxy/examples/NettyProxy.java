@@ -6,14 +6,14 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 /**
- * An example of a minimal HTTP proxy.
- * 
- * @see io.netty.example.proxy.HexDumpProxy#main(String[])
- * */
+ * A HTTP proxy derived from
+ * <a href="http://netty.io/5.0/xref/io/netty/example/proxy/HexDumpProxy.html" >
+ * io.netty.example.proxy.HexDumpProxy</a> with upstream address to connect the
+ * server is taken from requested URI.
+ */
 public class NettyProxy {
 
     private static final int LOCAL_PORT = 9090;
@@ -21,9 +21,6 @@ public class NettyProxy {
     private static final int WORKER_THREAD_COUNT = 10;
 
     public static void main(String[] args) throws Exception {
-
-        System.err.println("Proxying at localhost:" + LOCAL_PORT + " ...");
-
         // Configure the bootstrap.
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREAD_COUNT);
@@ -31,8 +28,8 @@ public class NettyProxy {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup);
             b.channel(NioServerSocketChannel.class);
-            b.handler(new LoggingHandler(LogLevel.INFO));
-            b.childHandler(new NettyProxyInitializer());
+            b.handler(new LoggingHandler(NettyProxy.class));
+            b.childHandler(new NettyProxyFrontendInitializer());
             b.childOption(ChannelOption.AUTO_READ, false);
             ChannelFuture f = b.bind(LOCAL_PORT).sync();
             f.sync().channel().closeFuture().sync();

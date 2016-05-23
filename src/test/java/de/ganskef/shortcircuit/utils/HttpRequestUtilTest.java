@@ -1,14 +1,15 @@
 package de.ganskef.shortcircuit.utils;
 
 import static org.junit.Assert.assertEquals;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpVersion;
 
 import java.net.InetSocketAddress;
 
 import org.junit.Test;
+
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpVersion;
 
 public class HttpRequestUtilTest {
 

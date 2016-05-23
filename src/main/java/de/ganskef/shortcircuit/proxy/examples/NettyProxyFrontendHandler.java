@@ -1,5 +1,9 @@
 package de.ganskef.shortcircuit.proxy.examples;
 
+import java.net.SocketAddress;
+
+import de.ganskef.shortcircuit.proxy.ProxyUtils;
+import de.ganskef.shortcircuit.utils.HttpRequestUtil;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -13,40 +17,35 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.LastHttpContent;
-import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
-import java.net.SocketAddress;
-
-import de.ganskef.shortcircuit.proxy.ProxyUtils;
-import de.ganskef.shortcircuit.utils.HttpRequestUtil;
-
+/**
+ * A HTTP proxy handler for the frontend client usually a browser derived from
+ * <a href=
+ * "http://netty.io/5.0/xref/io/netty/example/proxy/HexDumpProxyFrontendHandler.html"
+ * >io.netty.example.proxy.HexDumpProxyFrontendHandler</a>.
+ */
 public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
 
     private volatile Channel outboundChannel;
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
-        System.out.println(ctx.channel() + " channelActive");
         final Channel inboundChannel = ctx.channel();
         inboundChannel.read();
     }
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, final Object msg) {
-        System.out.println(ctx.channel() + " channelRead");
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
-            System.out.println(request.uri());
             SocketAddress address = HttpRequestUtil.getInetSocketAddress(request);
-            System.out.println(address);
             if (address == null) {
-                System.err.println("Address not resolved, terminate " + msg);
-                closeOnFlush(ctx.channel());
+                throw new IllegalStateException("Address not resolved, terminate " + msg);
             } else if (outboundChannel == null) {
                 initOutboundChannel(ctx, request, address);
             } else if (outboundChannel.isActive()) {
-                writeAndFlush(ctx, msg);
+                writeOutbound(ctx, msg);
             }
         } else if (msg instanceof LastHttpContent) {
             // Success, terminator received
@@ -55,7 +54,7 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
             // it's *necessary* to add a HttpRequestDecoder in the frontend
             // initializer. Doing so here's HttpRequest and LastHttpContent
             // expected only.
-            System.err.println("Expected request, but read " + msg);
+            throw new IllegalStateException("Expected request, but read " + msg);
         }
     }
 
@@ -74,18 +73,23 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
             public void operationComplete(ChannelFuture future) {
                 if (future.isSuccess()) {
                     ChannelPipeline p = outboundChannel.pipeline();
-                    p.addLast(// new LoggingHandler(LogLevel.INFO), //
-                    new HttpRequestEncoder());
+                    p.addLast(new LoggingHandler(NettyProxyBackendHandler.class), //
+                            new HttpRequestEncoder());
 
                     // There is no connection caching at the moment.
+                    // RFC 2616 HTTP/1.1 section 14.10 says:
+                    // HTTP/1.1 applications that do not support persistent
+                    // connections MUST include the "close" connection
+                    // option
+                    // in every message
                     HttpUtil.setKeepAlive(request, false);
 
-                    // URLConnecttion rejects if the proxied URL won't start
+                    // URLConnection rejects if the proxied URL won't start
                     // with the query, see RFC 7230 section 5.3.1.
                     String adjustedUri = ProxyUtils.stripHost(request.uri());
                     request.setUri(adjustedUri);
 
-                    writeAndFlush(ctx, request);
+                    writeOutbound(ctx, request);
                 } else {
                     // Close the connection if the connection attempt has
                     // failed.
@@ -95,7 +99,7 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         });
     }
 
-    private void writeAndFlush(final ChannelHandlerContext ctx, final Object msg) {
+    private void writeOutbound(final ChannelHandlerContext ctx, final Object msg) {
         outboundChannel.writeAndFlush(msg).addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) {
@@ -111,7 +115,6 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        System.out.println(ctx.channel() + " channelInactive");
         if (outboundChannel != null) {
             closeOnFlush(outboundChannel);
         }
@@ -119,8 +122,6 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        System.out.println(ctx.channel() + " exceptionCaught");
-        cause.printStackTrace();
         closeOnFlush(ctx.channel());
     }
 
@@ -128,7 +129,6 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
      * Closes the specified channel after all queued write requests are flushed.
      */
     static void closeOnFlush(Channel ch) {
-        System.out.println(ch + " closeOnFlush");
         if (ch.isActive()) {
             ch.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
         }

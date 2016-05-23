@@ -1,7 +1,5 @@
 package de.ganskef.test;
 
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -23,6 +21,8 @@ import javax.net.ssl.TrustManager;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
 public class Client implements IClient {
 
@@ -105,7 +105,21 @@ public class Client implements IClient {
     }
 
     public static void main(String[] args) throws Exception {
-        File result = new Client().get("https://localhost:8083");
+        File result = new Client().get("http://localhost:8082/", new IProxy() {
+            @Override
+            public void stop() {
+            }
+            
+            @Override
+            public IProxy start() {
+                return null;
+            }
+            
+            @Override
+            public int getProxyPort() {
+                return 9090;
+            }
+        });
         System.out.println(FileUtils.readFileToString(result));
     }
 

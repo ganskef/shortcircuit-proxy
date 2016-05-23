@@ -1,0 +1,21 @@
+<configuration debug="false">
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+  <root level="${logLevel:-debug}">
+    <appender-ref ref="STDOUT" />
+  </root>
+  <!-- Choose explicite classes to debug - ->
+  <logger name="de.ganskef.shortcircuit.proxy.examples.NettyProxyFrontendHandler" level="DEBUG" />
+  <logger name="de.ganskef.shortcircuit.proxy.examples.NettyProxyBackendHandler" level="DEBUG" />
+  <logger name="de.ganskef.shortcircuit.proxy.examples.NettyProxyTest" level="DEBUG" />
+  <logger name="de.ganskef.test.Server" level="DEBUG" />
+  <logger name="de.ganskef.test.SecureServer" level="DEBUG" />
+  <logger name="io.netty.example.http.file.HttpStaticFileServerHandler" level="DEBUG" />
+  <logger name="de.ganskef.test.NettyClient" level="DEBUG" />
+  <logger name="de.ganskef.test.NettyClientHandler" level="DEBUG" />
+  <logger name="io.netty.handler.ssl.SslHandler" level="DEBUG" />
+  <!- - -->
+</configuration>
