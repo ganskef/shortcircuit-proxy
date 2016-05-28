@@ -5,6 +5,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 
 /**
@@ -23,6 +24,7 @@ public class EvaluationServerInitializer extends ChannelInitializer<SocketChanne
         p.addLast(new HttpServerCodec(), //
                 new HttpObjectAggregator(65536), //
                 new ChunkedWriteHandler(), //
+                new LoggingHandler(EvaluationServerInitializer.class), //
                 new EvaluationServerHomeHandler(), //
                 new EvaluationServerFallbackHandler());
     }

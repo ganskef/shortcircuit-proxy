@@ -6,6 +6,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LoggingHandler;
 
 /**
  * This is a HTTP server based on the Netty <a
@@ -16,9 +17,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
  * independent components.
  */
 public class EvaluationServer {
-
-    // private static final Logger log =
-    // LoggerFactory.getLogger(EvaluationServer.class);
 
     private final int port;
 
@@ -37,19 +35,19 @@ public class EvaluationServer {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup);
             b.channel(NioServerSocketChannel.class);
+            b.handler(new LoggingHandler(EvaluationServer.class));
             b.childHandler(new EvaluationServerInitializer());
             b.option(ChannelOption.SO_BACKLOG, 128);
             b.childOption(ChannelOption.SO_KEEPALIVE, true);
 
             // Start server...
             ChannelFuture f = b.bind(port).sync();
-            // log.info("Server started and listening on port {}.", port);
 
+            // ...and listening until close.
             f.channel().closeFuture().sync();
-            // log.info("Server channel listening on port {} closed.", port);
 
         } catch (InterruptedException e) {
-            // log.error("Error in main:", e);
+            throw new IllegalStateException(e);
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();

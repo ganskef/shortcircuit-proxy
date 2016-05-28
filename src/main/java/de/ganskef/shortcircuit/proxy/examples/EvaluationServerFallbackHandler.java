@@ -23,13 +23,9 @@ import io.netty.util.ReferenceCountUtil;
  */
 public class EvaluationServerFallbackHandler extends ChannelInboundHandlerAdapter {
 
-    // private static final Logger log =
-    // LoggerFactory.getLogger(EvaluationServerFallbackHandler.class);
-
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {
-            // log.debug("{}", msg);
             if (isHandeled(msg)) {
                 writeErrorResponse(ctx);
             }
@@ -47,14 +43,11 @@ public class EvaluationServerFallbackHandler extends ChannelInboundHandlerAdapte
         HttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status,
                 Unpooled.copiedBuffer("Failure: " + status + "\r\n", CharsetUtil.UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
-        // log.debug("{}", response);
-        // Close the connection as soon as the error message is sent.
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        // log.error("Exception caught", cause);
         ctx.close();
     }
 

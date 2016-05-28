@@ -23,13 +23,9 @@ import io.netty.util.ReferenceCountUtil;
  */
 public class EvaluationServerHomeHandler extends ChannelInboundHandlerAdapter {
 
-    // private static final Logger log =
-    // LoggerFactory.getLogger(EvaluationServerHomeHandler.class);
-
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof FullHttpRequest && isHandeled((FullHttpRequest) msg)) {
-            // log.debug("{}", msg);
             try {
                 writeOkResponse(ctx);
             } finally {
@@ -50,13 +46,11 @@ public class EvaluationServerHomeHandler extends ChannelInboundHandlerAdapter {
         HttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status,
                 Unpooled.copiedBuffer("Response status: " + status + "\r\n", CharsetUtil.UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
-        // log.debug("{}", response);
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        // log.error("Exception caught", cause);
         ctx.close();
     }
 
