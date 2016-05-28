@@ -2,11 +2,6 @@ package de.ganskef.shortcircuit.proxy.examples;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LoggingHandler;
 
 import java.io.FileNotFoundException;
 
@@ -23,9 +18,10 @@ import de.ganskef.test.IProxy;
 import de.ganskef.test.SecureServer;
 import de.ganskef.test.Server;
 
-public class NettyProxyTest {
+/** Tests for NettyProxy using Netty based servers. */
+public class NettyProxyNettyTest {
 
-    private static final Logger log = LoggerFactory.getLogger(NettyProxyTest.class);
+    private static final Logger log = LoggerFactory.getLogger(NettyProxyNettyTest.class);
 
     private static IProxy proxy;
     private static Server server;
@@ -42,44 +38,7 @@ public class NettyProxyTest {
     public static void beforeClass() throws Exception {
         server = new Server(9091).start();
         secureServer = new SecureServer(9093).start();
-    }
-
-    @BeforeClass
-    public static void initProxy() throws Exception {
-        proxy = new IProxy() {
-
-            private NioEventLoopGroup bossGroup = new NioEventLoopGroup(1);
-            private NioEventLoopGroup workerGroup = new NioEventLoopGroup(1);
-
-            @Override
-            public int getProxyPort() {
-                return 9092;
-            }
-
-            @Override
-            public IProxy start() {
-                ServerBootstrap b = new ServerBootstrap();
-                b.group(bossGroup, workerGroup);
-                b.channel(NioServerSocketChannel.class);
-                b.handler(new LoggingHandler(NettyProxyTest.class));
-                b.childHandler(new NettyProxyFrontendInitializer());
-                b.childOption(ChannelOption.AUTO_READ, false);
-                try {
-                    b.bind(getProxyPort()).sync();
-                    log.info("Proxy running at localhost:{}", getProxyPort());
-                } catch (Exception e) {
-                    throw new IllegalStateException("Proxy start failed at localhost:" + getProxyPort(), e);
-                }
-                return this;
-            }
-
-            @Override
-            public void stop() {
-                bossGroup.shutdownGracefully();
-                workerGroup.shutdownGracefully();
-            }
-
-        }.start();
+        proxy = NettyProxyOkHttpTest.createNettyProxy(9092).start();
     }
 
     private IClient getClient() {
@@ -119,6 +78,6 @@ public class NettyProxyTest {
     public void testSecuredGetEvaluation() throws Exception {
         String url = secureServer.url("/LICENSE.txt");
         getClient().get(url);
-//        getClient().get(url, proxy);
+        //getClient().get(url, proxy);
     }
 }

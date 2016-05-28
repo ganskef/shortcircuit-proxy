@@ -41,7 +41,44 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
             final HttpRequest request = (HttpRequest) msg;
             SocketAddress address = HttpRequestUtil.getInetSocketAddress(request);
             if (address == null) {
-                throw new IllegalStateException("Address not resolved, terminate " + msg);
+                // TODO could be a direct request to the proxy server
+                // TODO could be a CONNECT request, HTTPS or proxy tunneling
+                /*
+                 * 405 Method Not Allowed
+                 * 
+                 * The method specified in the Request-Line is not allowed for
+                 * the resource identified by the Request-URI. The response MUST
+                 * include an Allow header containing a list of valid methods
+                 * for the requested resource.
+                 */
+                // TODO answer with a 404 or 400 response here
+                /*
+                 * 400 Bad Request
+                 * 
+                 * The request could not be understood by the server due to
+                 * malformed syntax. The client SHOULD NOT repeat the request
+                 * without modifications.
+                 */
+                /*
+                 * 404 Not Found
+                 * 
+                 * The server has not found anything matching the Request-URI.
+                 * No indication is given of whether the condition is temporary
+                 * or permanent. The 410 (Gone) status code SHOULD be used if
+                 * the server knows, through some internally configurable
+                 * mechanism, that an old resource is permanently unavailable
+                 * and has no forwarding address. This status code is commonly
+                 * used when the server does not wish to reveal exactly why the
+                 * request has been refused, or when no other response is
+                 * applicable.
+                 */
+//                HttpResponseStatus status = HttpResponseStatus.NOT_FOUND;
+//                FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status,
+//                        Unpooled.copiedBuffer("Failure: " + status + "\r\n", CharsetUtil.UTF_8));
+//                response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
+//                // Close the connection as soon as the error message is sent.
+//                ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+                 throw new IllegalStateException("Address not resolved, terminate " + msg);
             } else if (outboundChannel == null) {
                 initOutboundChannel(ctx, request, address);
             } else if (outboundChannel.isActive()) {
@@ -58,7 +95,8 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    private void initOutboundChannel(final ChannelHandlerContext ctx, final HttpRequest request, SocketAddress address) {
+    private void initOutboundChannel(final ChannelHandlerContext ctx, final HttpRequest request,
+            SocketAddress address) {
         final Channel inboundChannel = ctx.channel();
         // Start the connection attempt.
         Bootstrap b = new Bootstrap();
