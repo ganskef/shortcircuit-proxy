@@ -14,37 +14,33 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>4.11</junit.version>
-        <netty.version>4.1.0.Final-SNAPSHOT</netty.version>
+        <junit.version>4.12</junit.version>
+        <netty.version>4.1.0.Final</netty.version>
         <logback.version>1.1.7</logback.version>
         <jzlib.version>1.1.3</jzlib.version>
+        <okhttp3.version>3.3.0</okhttp3.version>
     </properties>
 
     <dependencies>
 
+        <!-- Main dependency to implement a HTTP proxy. -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
             <version>${netty.version}</version>
         </dependency>
+        <!-- Main dependency to implement a proxy server. -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>
             <version>${netty.version}</version>
         </dependency>
+        <!-- Introduced to evaluate proxy client and chained proxy. -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler-proxy</artifactId>
             <version>${netty.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Introduced to use Netty LoggingHandler -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -52,7 +48,6 @@
             <version>${logback.version}</version>
             <scope>runtime</scope>
         </dependency>
-
         <!-- Introduced to use compression with HTTP -->
         <dependency>
             <groupId>com.jcraft</groupId>
@@ -61,11 +56,25 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Main dependency for testing purposes. -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- Introduced by de.ganskef.test.Client -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.1</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Introduced to evaluate OkHttp for tests. -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>${okhttp3.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -78,8 +87,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
                 <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <!-- OkHttp depends on Java 7 -->
+                    <source>1.7</source>
+                    <target>1.7</target>
                 </configuration>
             </plugin>
         </plugins>
