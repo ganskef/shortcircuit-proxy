@@ -1,5 +1,9 @@
 package de.ganskef.shortcircuit.proxy.examples;
 
+import java.security.cert.CertificateException;
+
+import javax.net.ssl.SSLException;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
@@ -7,6 +11,9 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
 
 /**
  * This is a HTTP server based on the Netty <a
@@ -35,8 +42,8 @@ public class EvaluationServer {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup);
             b.channel(NioServerSocketChannel.class);
-            b.handler(new LoggingHandler(EvaluationServer.class));
-            b.childHandler(new EvaluationServerInitializer());
+            b.handler(new LoggingHandler("boss"));
+            b.childHandler(new EvaluationServerInitializer(getSslCtx()));
             b.option(ChannelOption.SO_BACKLOG, 128);
             b.childOption(ChannelOption.SO_KEEPALIVE, true);
 
@@ -51,6 +58,17 @@ public class EvaluationServer {
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+        }
+    }
+
+    private SslContext getSslCtx() {
+        try {
+            SelfSignedCertificate ssc = new SelfSignedCertificate();
+            return SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
+        } catch (CertificateException e) {
+            throw new IllegalStateException(e);
+        } catch (SSLException e) {
+            throw new IllegalStateException(e);
         }
     }
 

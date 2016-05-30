@@ -6,6 +6,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.stream.ChunkedWriteHandler;
 
 /**
@@ -18,13 +19,20 @@ import io.netty.handler.stream.ChunkedWriteHandler;
  */
 public class EvaluationServerInitializer extends ChannelInitializer<SocketChannel> {
 
+    private final SslContext sslCtx;
+
+    public EvaluationServerInitializer(SslContext sslCtx) {
+        this.sslCtx = sslCtx;
+    }
+
     @Override
     protected void initChannel(SocketChannel ch) throws Exception {
         ChannelPipeline p = ch.pipeline();
+        p.addFirst("sslupdate", new EvaluationServerSslUpdateHandler(sslCtx));
         p.addLast(new HttpServerCodec(), //
                 new HttpObjectAggregator(65536), //
                 new ChunkedWriteHandler(), //
-                new LoggingHandler(EvaluationServerInitializer.class), //
+                new LoggingHandler("work"), //
                 new EvaluationServerHomeHandler(), //
                 new EvaluationServerFallbackHandler());
     }
