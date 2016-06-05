@@ -14,12 +14,31 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>4.12</junit.version>
+        <!-- OkHttp depends on Java 7 -->
+        <java.version>1.7</java.version>
+        <!-- Dependencies -->
         <netty.version>4.1.0.Final</netty.version>
-        <logback.version>1.1.7</logback.version>
         <jzlib.version>1.1.3</jzlib.version>
+        <javassist.version>3.20.0-GA</javassist.version>
+        <!-- Test Dependencies -->
+        <junit.version>4.12</junit.version>
+        <logback.version>1.1.7</logback.version>
         <okhttp3.version>3.3.0</okhttp3.version>
+        <commons-io.version>2.1</commons-io.version>
+        <bouncycastle.version>1.50</bouncycastle.version>
     </properties>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/ganskef/shortcircuit-proxy/issues</url>
+    </issueManagement>
+
+    <licenses>
+        <license>
+            <name>Apache 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
 
     <dependencies>
 
@@ -55,6 +74,20 @@
             <version>${jzlib.version}</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- Introduced to clear performance warnings in log. -->
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>${javassist.version}</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <!-- Introduced for Man-In-The-Middle proxy -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
 
         <!-- Main dependency for testing purposes. -->
         <dependency>
@@ -67,13 +100,19 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>2.1</version>
+            <version>${commons-io.version}</version>
             <scope>test</scope>
         </dependency>
         <!-- Introduced to evaluate OkHttp for tests. -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>mockwebserver</artifactId>
+            <version>${okhttp3.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp-testing-support</artifactId>
             <version>${okhttp3.version}</version>
             <scope>test</scope>
         </dependency>
@@ -87,9 +126,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
                 <configuration>
-                    <!-- OkHttp depends on Java 7 -->
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                 </configuration>
             </plugin>
         </plugins>

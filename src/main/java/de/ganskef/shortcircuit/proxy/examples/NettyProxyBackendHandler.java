@@ -5,6 +5,8 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
  * A HTTP proxy handler for the backend server derived from <a href=
@@ -12,6 +14,8 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
  * >io.netty.example.proxy.HexDumpProxyBackendHandler</a>.
  */
 public class NettyProxyBackendHandler extends ChannelInboundHandlerAdapter {
+
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(NettyProxyBackendHandler.class);
 
     private final Channel inboundChannel;
 
@@ -32,6 +36,7 @@ public class NettyProxyBackendHandler extends ChannelInboundHandlerAdapter {
                 if (future.isSuccess()) {
                     ctx.channel().read();
                 } else {
+                    logger.warn("An exception was thrown:", future.cause());
                     future.channel().close();
                 }
             }
@@ -45,6 +50,7 @@ public class NettyProxyBackendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        logger.error("An exception was thrown:", cause);
         NettyProxyFrontendHandler.closeOnFlush(ctx.channel());
     }
 

@@ -18,6 +18,8 @@ import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
  * A HTTP proxy handler for the frontend client usually a browser derived from
@@ -26,6 +28,8 @@ import io.netty.handler.logging.LoggingHandler;
  * >io.netty.example.proxy.HexDumpProxyFrontendHandler</a>.
  */
 public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
+
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(NettyProxyFrontendHandler.class);
 
     private volatile Channel outboundChannel;
 
@@ -145,6 +149,7 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
                     // was able to flush out data, start to read the next chunk
                     ctx.channel().read();
                 } else {
+                    logger.warn("An exception was thrown:", future.cause());
                     future.channel().close();
                 }
             }
@@ -160,6 +165,7 @@ public class NettyProxyFrontendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        logger.error("An exception was thrown:", cause);
         closeOnFlush(ctx.channel());
     }
 

@@ -1,7 +1,7 @@
 package de.ganskef.shortcircuit.proxy.examples;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -11,7 +11,8 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.CharsetUtil;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
  * This handler responds with a 404 Not Found response always to a completed
@@ -23,14 +24,13 @@ import io.netty.util.ReferenceCountUtil;
  */
 public class EvaluationServerFallbackHandler extends ChannelInboundHandlerAdapter {
 
+    private static final InternalLogger logger = InternalLoggerFactory
+            .getInstance(EvaluationServerFallbackHandler.class);
+
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        try {
-            if (isHandeled(msg)) {
-                writeErrorResponse(ctx);
-            }
-        } finally {
-            ReferenceCountUtil.release(msg);
+        if (isHandeled(msg)) {
+            ctx.writeAndFlush(errorResponse(HttpResponseStatus.NOT_FOUND));
         }
     }
 
@@ -38,16 +38,17 @@ public class EvaluationServerFallbackHandler extends ChannelInboundHandlerAdapte
         return msg instanceof LastHttpContent;
     }
 
-    private void writeErrorResponse(ChannelHandlerContext ctx) {
-        HttpResponseStatus status = HttpResponseStatus.NOT_FOUND;
-        HttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status,
-                Unpooled.copiedBuffer("Failure: " + status + "\r\n", CharsetUtil.UTF_8));
+    private HttpResponse errorResponse(HttpResponseStatus status) {
+        ByteBuf buffer = Unpooled.copiedBuffer("Failure: " + status + "\r\n", CharsetUtil.UTF_8);
+        HttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, buffer);
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
-        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, buffer.readableBytes());
+        return response;
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        logger.error("An exception was thrown:", cause);
         ctx.close();
     }
 

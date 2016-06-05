@@ -1,13 +1,14 @@
 package de.ganskef.shortcircuit.proxy.examples;
 
+import de.ganskef.shortcircuit.proxy.SslContextFactory;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.ssl.SslContext;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import io.netty.util.AttributeKey;
 
 /**
  * This initializes a pipeline of a HTTP server with chained handlers answering
@@ -19,20 +20,26 @@ import io.netty.handler.stream.ChunkedWriteHandler;
  */
 public class EvaluationServerInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final SslContext sslCtx;
+    public static final AttributeKey<String> CONNECTED = AttributeKey.newInstance("CONNECTED_HOST_AND_PORT");
 
-    public EvaluationServerInitializer(SslContext sslCtx) {
-        this.sslCtx = sslCtx;
+    private final SslContextFactory sslCtxFactory;
+
+    public EvaluationServerInitializer(SslContextFactory sslContextFactory) {
+        this.sslCtxFactory = sslContextFactory;
     }
 
     @Override
     protected void initChannel(SocketChannel ch) throws Exception {
         ChannelPipeline p = ch.pipeline();
-        p.addFirst("sslupdate", new EvaluationServerSslUpdateHandler(sslCtx));
+        if (sslCtxFactory != null) {
+            p.addFirst(new EvaluationServerSslUpdateHandler(sslCtxFactory, CONNECTED));
+        }
         p.addLast(new HttpServerCodec(), //
                 new HttpObjectAggregator(65536), //
                 new ChunkedWriteHandler(), //
                 new LoggingHandler("work"), //
+                new EvaluationServerConnectHandler(sslCtxFactory, CONNECTED), //
+//                new EvaluationServerProxyHandler(sslCtxFactory, CONNECTED), //
                 new EvaluationServerHomeHandler(), //
                 new EvaluationServerFallbackHandler());
     }
