@@ -7,7 +7,6 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Writer;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.Key;
@@ -28,7 +27,6 @@ import java.util.UUID;
 
 import javax.security.auth.x500.X500Principal;
 
-import org.apache.commons.io.IOUtils;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -278,12 +276,8 @@ public class MitmCertificate {
                 keystore.setKeyEntry(authority.alias(), keyPair.getPrivate(), authority.password(),
                         new Certificate[] { cert });
 
-                OutputStream os = null;
-                try {
-                    os = new FileOutputStream(authority.aliasFile(KEY_STORE_FILE_EXTENSION));
+                try (OutputStream os = new FileOutputStream(authority.aliasFile(KEY_STORE_FILE_EXTENSION))) {
                     keystore.store(os, authority.password());
-                } finally {
-                    IOUtils.closeQuietly(os);
                 }
 
                 Certificate ca = keystore.getCertificate(authority.alias());
@@ -295,18 +289,11 @@ public class MitmCertificate {
         }
 
         private void exportPem(File exportFile, Object... certs) throws IOException, CertificateEncodingException {
-            Writer sw = null;
-            JcaPEMWriter pw = null;
-            try {
-                sw = new FileWriter(exportFile);
-                pw = new JcaPEMWriter(sw);
+            try (JcaPEMWriter pw = new JcaPEMWriter(new FileWriter(exportFile))) {
                 for (Object cert : certs) {
                     pw.writeObject(cert);
                     pw.flush();
                 }
-            } finally {
-                IOUtils.closeQuietly(pw);
-                IOUtils.closeQuietly(sw);
             }
         }
 
@@ -420,15 +407,10 @@ public class MitmCertificate {
     }
 
     private static SubjectKeyIdentifier createSubjectKeyIdentifier(Key key) throws IOException {
-        ByteArrayInputStream bIn = new ByteArrayInputStream(key.getEncoded());
-        ASN1InputStream is = null;
-        try {
-            is = new ASN1InputStream(bIn);
+        try (ASN1InputStream is = new ASN1InputStream(new ByteArrayInputStream(key.getEncoded()))) {
             ASN1Sequence seq = (ASN1Sequence) is.readObject();
-            SubjectPublicKeyInfo info = new SubjectPublicKeyInfo(seq);
+            SubjectPublicKeyInfo info = SubjectPublicKeyInfo.getInstance(seq);
             return new BcX509ExtensionUtils().createSubjectKeyIdentifier(info);
-        } finally {
-            IOUtils.closeQuietly(is);
         }
     }
 
