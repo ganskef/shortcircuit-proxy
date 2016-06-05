@@ -1,8 +1,7 @@
 package de.ganskef.shortcircuit.proxy;
 
+import java.io.IOException;
 import java.security.GeneralSecurityException;
-
-import javax.net.ssl.SSLException;
 
 import de.ganskef.tls.MitmCertificate;
 import io.netty.handler.ssl.SslContext;
@@ -32,7 +31,7 @@ public class SslContextFactory {
                     .issuedBy(root) //
                     .build();
             return SslContextBuilder.forServer(fake.keyPair.getPrivate(), fake.certificate).build();
-        } catch (SSLException e) {
+        } catch (IOException e) {
             throw new GeneralSecurityException(e);
         }
     }

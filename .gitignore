@@ -2,3 +2,9 @@
 /.settings/
 /.classpath
 /.project
+/local/
+/src/test/resources/tmp/
+/*.pem
+/*.p12
+/*.log
+/*.launch

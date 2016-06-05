@@ -18,8 +18,6 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.Random;
@@ -40,7 +38,6 @@ import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
-import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.bc.BcX509ExtensionUtils;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -50,7 +47,6 @@ import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.x509.X509V3CertificateGenerator;
 
 /**
  * Class to create signed certificates, initially taken from the OkHttp project
@@ -81,13 +77,13 @@ public class MitmCertificate {
 
     /**
      * The signature algorithm starting with the message digest to use when
-     * signing certificates. On 64-bit systems this should be set to SHA512, on
-     * 32-bit systems this is SHA256. On 64-bit systems, SHA512 generally
+     * signing certificates. On 64-bit systems message digest is set to SHA512,
+     * on 32-bit systems this is SHA256. On 64-bit systems, SHA512 generally
      * performs better than SHA256; see this question for details:
      * http://crypto.stackexchange.com/questions/26336/sha512-faster-than-
-     * sha256
+     * sha256. SHA384 is SHA512 with a smaller output size.
      */
-    private static final String SIGNATURE_ALGORITHM = (is32BitJvm() ? "SHA256" : "SHA512") + "WithRSAEncryption";
+    private static final String SIGNATURE_ALGORITHM = (is32BitJvm() ? "SHA256" : "SHA384") + "WithRSAEncryption";
 
     public final X509Certificate certificate;
 
@@ -154,7 +150,7 @@ public class MitmCertificate {
                     : BigInteger.valueOf(initRandomSerial());
 
             // Subject, public & private keys for this certificate.
-            KeyPair heldKeyPair = keyPair != null ? keyPair : generateKeyPair();
+            KeyPair heldKeyPair = keyPair != null ? keyPair : generateKeyPair(1024);
             X500Principal subject = hostname != null ? new X500Principal("CN=" + hostname)
                     : new X500Principal("CN=" + UUID.randomUUID());
 
@@ -172,27 +168,19 @@ public class MitmCertificate {
 
             // Generate & sign the certificate.
             long now = System.currentTimeMillis();
-            X509V3CertificateGenerator generator = new X509V3CertificateGenerator();
-            generator.setSerialNumber(serial);
-            generator.setIssuerDN(signedByPrincipal);
-            generator.setNotBefore(new Date(now));
-            generator.setNotAfter(new Date(now + duration));
-            generator.setSubjectDN(subject);
-            generator.setPublicKey(heldKeyPair.getPublic());
-            generator.setSignatureAlgorithm("SHA256WithRSAEncryption");
+            X509v3CertificateBuilder generator = new JcaX509v3CertificateBuilder(signedByPrincipal, serial,
+                    new Date(now), new Date(now + duration), subject, heldKeyPair.getPublic());
 
             if (maxIntermediateCas > 0) {
-                generator.addExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(maxIntermediateCas));
+                try {
+                    generator.addExtension(Extension.basicConstraints, true, new BasicConstraints(maxIntermediateCas));
+                } catch (IOException e) {
+                    throw new GeneralSecurityException(e);
+                }
             }
 
-            X509Certificate certificate = generator.generateX509Certificate(signedByKeyPair.getPrivate(), "BC");
+            X509Certificate certificate = signCertificate(generator, signedByKeyPair.getPrivate());
             return new MitmCertificate(certificate, heldKeyPair);
-        }
-
-        public KeyPair generateKeyPair() throws GeneralSecurityException {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA", "BC");
-            keyPairGenerator.initialize(1024, new SecureRandom());
-            return keyPairGenerator.generateKeyPair();
         }
     }
 
@@ -209,188 +197,131 @@ public class MitmCertificate {
 
         private static final String KEY_STORE_FILE_EXTENSION = ".p12";
 
-        /**
-         * Current browsers starts reject root certificates with smaller key
-         * size.
-         */
-        private static final int ROOT_KEYSIZE = 2048;
+        private File keyStoreDir = new File(".").getAbsoluteFile();
 
-        private Authority authority = new Authority();
+        private String alias = "littleproxy-mitm";
 
-        public KeyStore loadKeyStore() throws GeneralSecurityException {
-            KeyStore ks = KeyStore.getInstance(KEY_STORE_TYPE);
-            try (FileInputStream is = new FileInputStream(authority.aliasFile(KEY_STORE_FILE_EXTENSION))) {
-                ks.load(is, authority.password());
-            } catch (IOException e) {
-                throw new GeneralSecurityException(e);
-            }
-            return ks;
-        }
+        private char[] password = "Be Your Own Lantern".toCharArray();;
 
-        public MitmCertificate build() throws GeneralSecurityException {
-            if (!authority.aliasFile(KEY_STORE_FILE_EXTENSION).exists() || !authority.aliasFile(".pem").exists()) {
-                initializeKeyStore();
-            }
-            KeyStore ks = loadKeyStore();
-            X509Certificate certificate = (X509Certificate) ks.getCertificate(authority.alias());
-            PrivateKey privateKey = (PrivateKey) ks.getKey(authority.alias(), authority.password());
-            PublicKey publicKey = certificate.getPublicKey();
-            KeyPair keyPair = new KeyPair(publicKey, privateKey);
-            return new MitmCertificate(certificate, keyPair);
-        }
+        private String organization = "LittleProxy-mitm";
 
-        private void initializeKeyStore() throws GeneralSecurityException {
-            try {
-                KeyPair keyPair = generateKeyPair(ROOT_KEYSIZE);
+        private String commonName = organization + ", describe proxy here";
 
-                X500NameBuilder nameBuilder = new X500NameBuilder(BCStyle.INSTANCE);
-                nameBuilder.addRDN(BCStyle.CN, authority.commonName());
-                nameBuilder.addRDN(BCStyle.O, authority.organization());
-                nameBuilder.addRDN(BCStyle.OU, authority.organizationalUnitName());
+        private String organizationalUnitName = "Certificate Authority";
 
-                X500Name issuer = nameBuilder.build();
-                BigInteger serial = BigInteger.valueOf(initRandomSerial());
-                X500Name subject = issuer;
-                PublicKey pubKey = keyPair.getPublic();
-
-                X509v3CertificateBuilder generator = new JcaX509v3CertificateBuilder(issuer, serial, NOT_BEFORE,
-                        NOT_AFTER, subject, pubKey);
-
-                generator.addExtension(Extension.subjectKeyIdentifier, false, createSubjectKeyIdentifier(pubKey));
-                generator.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
-
-                KeyUsage usage = new KeyUsage(KeyUsage.keyCertSign | KeyUsage.digitalSignature
-                        | KeyUsage.keyEncipherment | KeyUsage.dataEncipherment | KeyUsage.cRLSign);
-                generator.addExtension(Extension.keyUsage, false, usage);
-
-                ASN1EncodableVector purposes = new ASN1EncodableVector();
-                purposes.add(KeyPurposeId.id_kp_serverAuth);
-                purposes.add(KeyPurposeId.id_kp_clientAuth);
-                purposes.add(KeyPurposeId.anyExtendedKeyUsage);
-                generator.addExtension(Extension.extendedKeyUsage, false, new DERSequence(purposes));
-
-                X509Certificate cert = signCertificate(generator, keyPair.getPrivate());
-
-                KeyStore keystore = KeyStore.getInstance(KEY_STORE_TYPE);
-                keystore.load(null, null);
-                keystore.setKeyEntry(authority.alias(), keyPair.getPrivate(), authority.password(),
-                        new Certificate[] { cert });
-
-                try (OutputStream os = new FileOutputStream(authority.aliasFile(KEY_STORE_FILE_EXTENSION))) {
-                    keystore.store(os, authority.password());
-                }
-
-                Certificate ca = keystore.getCertificate(authority.alias());
-                exportPem(authority.aliasFile(".pem"), ca);
-
-            } catch (IOException | OperatorCreationException e) {
-                throw new GeneralSecurityException(e);
-            }
-        }
-
-        private void exportPem(File exportFile, Object... certs) throws IOException, CertificateEncodingException {
-            try (JcaPEMWriter pw = new JcaPEMWriter(new FileWriter(exportFile))) {
-                for (Object cert : certs) {
-                    pw.writeObject(cert);
-                    pw.flush();
-                }
-            }
-        }
-
-        public KeyPair generateKeyPair(int keysize) throws GeneralSecurityException {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA", "BC");
-            keyPairGenerator.initialize(keysize, new SecureRandom());
-            return keyPairGenerator.generateKeyPair();
-        }
-
-    }
-
-    // TODO integrate Authorithy into builders
-    @Deprecated
-    public static final class Authority {
-
-        private final File keyStoreDir;
-
-        private final String alias;
-
-        private final char[] password;
-
-        private final String commonName;
-
-        private final String organization;
-
-        private final String organizationalUnitName;
-
-        private final String certOrganization;
-
-        private final String certOrganizationalUnitName;
-
-        /**
-         * Create a parameter object with example certificate and certificate
-         * authority informations
-         */
-        public Authority() {
-            keyStoreDir = new File(".");
-            alias = "littleproxy-mitm"; // proxy id
-            password = "Be Your Own Lantern".toCharArray();
-            organization = "LittleProxy-mitm"; // proxy name
-            commonName = organization + ", describe proxy here"; // MITM is bad
-                                                                 // normally
-            organizationalUnitName = "Certificate Authority";
-            certOrganization = organization; // proxy name
-            certOrganizationalUnitName = organization
-                    + ", describe proxy purpose here, since Man-In-The-Middle is bad normally.";
-        }
-
-        /**
-         * Create a parameter object with the given certificate and certificate
-         * authority informations
-         */
-        public Authority(File keyStoreDir, String alias, char[] password, String commonName, String organization,
-                String organizationalUnitName, String certOrganization, String certOrganizationalUnitName) {
-            super();
+        public RootBuilder keyStoreDir(File keyStoreDir) {
             this.keyStoreDir = keyStoreDir;
+            return this;
+        }
+
+        public RootBuilder alias(String alias) {
             this.alias = alias;
+            return this;
+        }
+
+        public RootBuilder password(char[] password) {
             this.password = password;
-            this.commonName = commonName;
+            return this;
+        }
+
+        public RootBuilder organization(String organization) {
             this.organization = organization;
+            return this;
+        }
+
+        public RootBuilder commonName(String commonName) {
+            this.commonName = commonName;
+            return this;
+        }
+
+        public RootBuilder organizationalUnitName(String organizationalUnitName) {
             this.organizationalUnitName = organizationalUnitName;
-            this.certOrganization = certOrganization;
-            this.certOrganizationalUnitName = certOrganizationalUnitName;
+            return this;
         }
 
         public File aliasFile(String fileExtension) {
             return new File(keyStoreDir, alias + fileExtension);
         }
 
-        public String alias() {
-            return alias;
+        public KeyStore loadKeyStore() throws GeneralSecurityException, IOException {
+            KeyStore ks = KeyStore.getInstance(KEY_STORE_TYPE);
+            try (FileInputStream is = new FileInputStream(aliasFile(KEY_STORE_FILE_EXTENSION))) {
+                ks.load(is, password);
+            }
+            return ks;
         }
 
-        public char[] password() {
-            return password;
+        public MitmCertificate build() throws GeneralSecurityException, IOException {
+            if (!aliasFile(KEY_STORE_FILE_EXTENSION).exists() || !aliasFile(".pem").exists()) {
+                initializeKeyStore();
+            }
+            KeyStore ks = loadKeyStore();
+            X509Certificate certificate = (X509Certificate) ks.getCertificate(alias);
+            PrivateKey privateKey = (PrivateKey) ks.getKey(alias, password);
+            PublicKey publicKey = certificate.getPublicKey();
+            KeyPair keyPair = new KeyPair(publicKey, privateKey);
+            return new MitmCertificate(certificate, keyPair);
         }
 
-        public String commonName() {
-            return commonName;
+        public void initializeKeyStore() throws GeneralSecurityException, IOException {
+            KeyPair keyPair = generateKeyPair(1024);
+
+            X500NameBuilder nameBuilder = new X500NameBuilder(BCStyle.INSTANCE);
+            nameBuilder.addRDN(BCStyle.CN, commonName);
+            nameBuilder.addRDN(BCStyle.O, organization);
+            nameBuilder.addRDN(BCStyle.OU, organizationalUnitName);
+
+            X500Name issuer = nameBuilder.build();
+            BigInteger serial = BigInteger.valueOf(initRandomSerial());
+            X500Name subject = issuer;
+            PublicKey pubKey = keyPair.getPublic();
+            X509v3CertificateBuilder generator = new JcaX509v3CertificateBuilder(issuer, serial, NOT_BEFORE, NOT_AFTER,
+                    subject, pubKey);
+
+            generator.addExtension(Extension.subjectKeyIdentifier, false, createSubjectKeyIdentifier(pubKey));
+            generator.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
+
+            KeyUsage usage = new KeyUsage(KeyUsage.keyCertSign | KeyUsage.digitalSignature | KeyUsage.keyEncipherment
+                    | KeyUsage.dataEncipherment | KeyUsage.cRLSign);
+            generator.addExtension(Extension.keyUsage, false, usage);
+
+            ASN1EncodableVector purposes = new ASN1EncodableVector();
+            purposes.add(KeyPurposeId.id_kp_serverAuth);
+            purposes.add(KeyPurposeId.id_kp_clientAuth);
+            purposes.add(KeyPurposeId.anyExtendedKeyUsage);
+            generator.addExtension(Extension.extendedKeyUsage, false, new DERSequence(purposes));
+
+            X509Certificate cert = signCertificate(generator, keyPair.getPrivate());
+            KeyStore keystore = KeyStore.getInstance(KEY_STORE_TYPE);
+            keystore.load(null, null);
+            keystore.setKeyEntry(alias, keyPair.getPrivate(), password, new Certificate[] { cert });
+            try (OutputStream os = new FileOutputStream(aliasFile(KEY_STORE_FILE_EXTENSION))) {
+                keystore.store(os, password);
+            }
+            exportPem(aliasFile(".pem"), cert);
         }
 
-        public String organization() {
-            return organization;
-        }
+    }
 
-        public String organizationalUnitName() {
-            return organizationalUnitName;
+    public static void exportPem(File exportFile, Object... certs) throws GeneralSecurityException, IOException {
+        try (JcaPEMWriter pw = new JcaPEMWriter(new FileWriter(exportFile))) {
+            for (Object cert : certs) {
+                pw.writeObject(cert);
+                pw.flush();
+            }
         }
+    }
 
-        public String certOrganisation() {
-            return certOrganization;
-        }
-
-        public String certOrganizationalUnitName() {
-            return certOrganizationalUnitName;
-        }
-
+    /**
+     * Generate a RSA key pair with the given key size. It's recommended to use
+     * 1024 bit. Thoughts: 2048 takes much longer time. And for almost every
+     * client, 1024 using SHA256(+) message digest is sufficient. Modern
+     * browsers have begun to distrust SHA1 message digest.
+     */
+    public static KeyPair generateKeyPair(int keysize) throws GeneralSecurityException {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA", "BC");
+        keyPairGenerator.initialize(keysize, new SecureRandom());
+        return keyPairGenerator.generateKeyPair();
     }
 
     /**
@@ -406,7 +337,7 @@ public class MitmCertificate {
         return sl;
     }
 
-    private static SubjectKeyIdentifier createSubjectKeyIdentifier(Key key) throws IOException {
+    public static SubjectKeyIdentifier createSubjectKeyIdentifier(Key key) throws IOException {
         try (ASN1InputStream is = new ASN1InputStream(new ByteArrayInputStream(key.getEncoded()))) {
             ASN1Sequence seq = (ASN1Sequence) is.readObject();
             SubjectPublicKeyInfo info = SubjectPublicKeyInfo.getInstance(seq);
@@ -414,11 +345,14 @@ public class MitmCertificate {
         }
     }
 
-    private static X509Certificate signCertificate(X509v3CertificateBuilder certificateBuilder,
-            PrivateKey signedWithPrivateKey) throws OperatorCreationException, CertificateException {
-        ContentSigner signer = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM).setProvider("BC")
-                .build(signedWithPrivateKey);
-        return new JcaX509CertificateConverter().setProvider("BC").getCertificate(certificateBuilder.build(signer));
+    public static X509Certificate signCertificate(X509v3CertificateBuilder certificateBuilder, PrivateKey privateKey)
+            throws GeneralSecurityException {
+        try {
+            ContentSigner signer = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM).setProvider("BC").build(privateKey);
+            return new JcaX509CertificateConverter().setProvider("BC").getCertificate(certificateBuilder.build(signer));
+        } catch (OperatorCreationException e) {
+            throw new GeneralSecurityException(e);
+        }
     }
 
     /**
