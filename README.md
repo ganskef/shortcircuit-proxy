@@ -32,7 +32,7 @@ available. A good starting point is the fine *Netty* documentation
 [examples](https://github.com/netty/netty/tree/4.1/example/src/main/java/io/netty/example).
 
 
-# Using Handlers
+## Using Handlers
 
 A HTTP proxy server is basically a HTTP server which gets the contents from the 
 upstream server. So the bootstrap is nearly the same. It's a `ServerBootstrap` 
@@ -60,7 +60,7 @@ A perfect example of intercepting data is the Netty `LoggingHandler`.
 
 ## Encryption 
 
-Work in progress: The Transport Level Security (TLS) code is taken from 
+Work in progress: The Transport Layer Security (TLS) code is taken from 
 [ganskef/LittleProxy-mitm](https://github.com/ganskef/LittleProxy-mitm) merged 
 with concepts from [OkHttp](http://square.github.io/okhttp/). It would be great 
 to have a dedicated module with this stuff without a dependency to HTTP. This 
